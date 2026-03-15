@@ -88,7 +88,7 @@ $SPC install-pkg go-xcaddy
 EXTENSIONS=$(yq -r '.extensions // "all"' "$CONFIG_FILE")
 if [[ "$EXTENSIONS" == "all" ]]; then
     # Common extensions for Laravel/Symfony development
-    EXTENSIONS="bcmath,calendar,ctype,curl,dom,exif,fileinfo,filter,gd,iconv,intl,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pdo_pgsql,pdo_sqlite,pgsql,phar,posix,readline,redis,session,simplexml,soap,sockets,sodium,sqlite3,tokenizer,xml,xmlreader,xmlwriter,zip,zlib"
+    EXTENSIONS="bcmath,calendar,ctype,curl,dom,exif,fileinfo,filter,gd,iconv,intl,mbstring,mbregex,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pdo_pgsql,pdo_sqlite,pgsql,phar,posix,readline,redis,session,simplexml,soap,sockets,sodium,sqlite3,tokenizer,xml,xmlreader,xmlwriter,zip,zlib"
 fi
 
 echo "=== Downloading PHP ${PHP_VERSION} sources ==="
