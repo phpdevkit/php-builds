@@ -4,7 +4,7 @@ versions:
   - "8.4"
   - "8.5"
 
-frankenphp_version: "1.5.0"
+frankenphp_version: "1.12.1"
 
 platforms:
   - os: linux
