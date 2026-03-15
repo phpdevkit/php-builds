@@ -64,7 +64,8 @@ rm -rf source/micro downloads/micro 2>/dev/null || true
 echo "=== Compiling PHP ==="
 "$SPC" build \
     --build-cli \
-    --with-extensions="${EXT_LIST}"
+    -L \
+    "${EXT_LIST}"
 
 # Step 3: Locate and package the binary
 PHP_BINARY="buildroot/bin/php"
