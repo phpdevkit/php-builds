@@ -40,6 +40,10 @@ if [[ ! -x "$SPC" ]]; then
     rm -f "${BUILD_DIR}/spc.tar.gz"
 fi
 
+# Install build dependencies (musl-cross-make, etc.)
+echo "=== Installing build dependencies ==="
+"$SPC" doctor --auto-fix
+
 # Comprehensive extension list
 EXT_LIST="bcmath,bz2,calendar,ctype,curl,dom,exif,fileinfo,filter,ftp,gd,gettext,gmp,iconv,intl,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pdo_pgsql,pdo_sqlite,pgsql,phar,posix,readline,redis,session,shmop,simplexml,soap,sockets,sodium,sqlite3,sysvmsg,sysvsem,sysvshm,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib"
 
@@ -57,7 +61,6 @@ echo "=== Downloading sources ==="
 echo "=== Compiling PHP ==="
 "$SPC" build \
     --build-cli \
-    --with-libs=bzip2,curl,freetype,gettext,gmp,libffi,libjpeg,libpng,libsodium,libxml2,libxslt,libzip,nghttp2,onig,openssl,pgsql,readline,sqlite,zlib,zstd \
     "${EXT_LIST}"
 
 # Step 3: Locate and package the binary
