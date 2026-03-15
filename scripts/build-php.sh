@@ -57,11 +57,14 @@ echo "=== Downloading sources ==="
     --prefer-pre-built \
     --retry=3
 
+# Remove micro SAPI source — we only build CLI, and micro patches can fail on newer PHP
+rm -rf source/micro downloads/micro 2>/dev/null || true
+
 # Step 2: Build static PHP CLI binary
 echo "=== Compiling PHP ==="
 "$SPC" build \
     --build-cli \
-    "${EXT_LIST}"
+    --with-extensions="${EXT_LIST}"
 
 # Step 3: Locate and package the binary
 PHP_BINARY="buildroot/bin/php"
