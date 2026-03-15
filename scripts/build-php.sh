@@ -27,7 +27,7 @@ echo "=== Building PHP ${VERSION} for ${OS}-${ARCH} ==="
 mkdir -p "$BUILD_DIR" "$OUTPUT_DIR"
 
 # Download static-php-cli if not present
-SPC_VERSION="2.4.0"
+SPC_VERSION="2.8.2"
 SPC="${BUILD_DIR}/spc"
 
 if [[ ! -x "$SPC" ]]; then
@@ -56,9 +56,6 @@ echo "=== Downloading sources ==="
     --for-extensions="${EXT_LIST}" \
     --prefer-pre-built \
     --retry=3
-
-# Remove micro SAPI source — we only build CLI, and micro patches can fail on newer PHP
-rm -rf source/micro downloads/micro 2>/dev/null || true
 
 # Step 2: Build static PHP CLI binary
 echo "=== Compiling PHP ==="
