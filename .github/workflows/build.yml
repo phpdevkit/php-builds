@@ -310,11 +310,6 @@ jobs:
             fi
           done
 
-          # Include composer.phar
-          if [[ -f "${TOOLS_DIR}/composer.phar" ]]; then
-            TOOL_ASSETS+=("${TOOLS_DIR}/composer.phar")
-          fi
-
           if [[ ${#TOOL_ASSETS[@]} -eq 0 ]]; then
             echo "No tool assets to publish"
             exit 0
