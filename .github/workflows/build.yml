@@ -29,7 +29,7 @@ jobs:
       has_builds: ${{ steps.check.outputs.has_builds }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install dependencies
         run: |
@@ -115,7 +115,7 @@ jobs:
       matrix: ${{ fromJson(needs.check.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Install build dependencies
         run: |
@@ -155,7 +155,7 @@ jobs:
           bash scripts/build-php.sh "${{ matrix.version }}" "${{ matrix.os }}" "${{ matrix.arch }}"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: php-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
           path: output/php-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
@@ -171,7 +171,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download Composer
         run: |
@@ -223,7 +223,7 @@ jobs:
           echo "Downloaded Symfony CLI ${SYMFONY_VERSION}"
 
       - name: Upload tool artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: tools
           path: tools/
@@ -239,7 +239,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
@@ -283,23 +283,12 @@ jobs:
               gh release upload "$TAG" "${ASSETS[@]}" --repo "$REPO" --clobber
             else
               echo "Creating release ${TAG}..."
+              NOTES="Static PHP ${version} builds for Linux (x86_64, aarch64). Built with static-php-cli."
               gh release create "$TAG" \
                 "${ASSETS[@]}" \
                 --repo "$REPO" \
                 --title "PHP ${version}" \
-                --notes "Static PHP ${version} builds for Linux (x86_64, aarch64).
-
-Built with [static-php-cli](https://github.com/crazywhalecc/static-php-cli).
-
-## Included extensions
-All commonly used extensions including: bcmath, curl, gd, intl, mbstring, mysqli, opcache, openssl, pdo_mysql, pdo_pgsql, pdo_sqlite, redis, sodium, zip, and more.
-
-## Usage
-Download the tarball for your platform, extract, and use:
-\`\`\`bash
-tar -xzf php-${version}-linux-x86_64.tar.gz
-./php-${version}/bin/php -v
-\`\`\`" \
+                --notes "$NOTES" \
                 --latest=false
             fi
           done
@@ -331,11 +320,7 @@ tar -xzf php-${version}-linux-x86_64.tar.gz
             exit 0
           fi
 
-          NOTES="Development tools bundle.
-
-composer: ${COMPOSER_VERSION:-latest}
-laravel-installer: ${LARAVEL_VERSION:-latest}
-symfony-cli: ${SYMFONY_VERSION:-latest}"
+          NOTES="Development tools bundle. Composer: ${COMPOSER_VERSION:-latest}, Laravel: ${LARAVEL_VERSION:-latest}, Symfony CLI: ${SYMFONY_VERSION:-latest}"
 
           if gh release view "tools" --repo "$REPO" >/dev/null 2>&1; then
             gh release upload "tools" "${TOOL_ASSETS[@]}" --repo "$REPO" --clobber
