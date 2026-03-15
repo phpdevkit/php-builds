@@ -117,7 +117,8 @@ jobs:
             libonig-dev libzip-dev libgmp-dev libreadline-dev libsodium-dev \
             libxslt-dev libpq-dev
 
-          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          YQ_ARCH=$(uname -m | sed 's/x86_64/amd64/' | sed 's/aarch64/arm64/')
+          sudo wget -qO /usr/local/bin/yq "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_${YQ_ARCH}"
           sudo chmod +x /usr/local/bin/yq
 
       - name: Set up PHP
