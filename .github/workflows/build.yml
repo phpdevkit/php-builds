@@ -1,8 +1,7 @@
-name: Build PHP
+name: Build FrankenPHP
 
 on:
   schedule:
-    # Run every hour to check for new PHP releases
     - cron: "0 * * * *"
   workflow_dispatch:
     inputs:
@@ -18,9 +17,6 @@ env:
   REPO: ${{ github.repository }}
 
 jobs:
-  # ──────────────────────────────────────────────────────────────
-  # Job 1: Check for new PHP versions
-  # ──────────────────────────────────────────────────────────────
   check:
     name: Check for updates
     runs-on: ubuntu-latest
@@ -41,12 +37,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # If a forced version is provided, use it directly
           if [[ -n "${{ github.event.inputs.force_version }}" ]]; then
             VERSION="${{ github.event.inputs.force_version }}"
             echo "Forced build for PHP ${VERSION}"
 
-            # Read platforms from config
             PLATFORMS=$(yq -o=json '.platforms' config.yaml)
             MATRIX='{"include":[]}'
 
@@ -65,11 +59,9 @@ jobs:
             exit 0
           fi
 
-          # Auto-detect new versions
           RESULTS=$(bash scripts/check-updates.sh)
           echo "$RESULTS"
 
-          # Parse BUILD lines and create matrix
           PLATFORMS=$(yq -o=json '.platforms' config.yaml)
           MATRIX='{"include":[]}'
           HAS_BUILDS=false
@@ -102,11 +94,8 @@ jobs:
             echo "No new versions to build."
           fi
 
-  # ──────────────────────────────────────────────────────────────
-  # Job 2: Build PHP for each version x platform
-  # ──────────────────────────────────────────────────────────────
   build:
-    name: Build PHP ${{ matrix.version }} (${{ matrix.os }}-${{ matrix.arch }})
+    name: Build FrankenPHP PHP ${{ matrix.version }} (${{ matrix.os }}-${{ matrix.arch }})
     needs: check
     if: needs.check.outputs.has_builds == 'true'
     runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
@@ -121,35 +110,22 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            build-essential \
-            autoconf \
-            automake \
-            libtool \
-            pkg-config \
-            cmake \
-            re2c \
-            bison \
-            curl \
-            wget \
-            xz-utils \
-            libxml2-dev \
-            libssl-dev \
-            libsqlite3-dev \
-            zlib1g-dev \
-            libbz2-dev \
-            libcurl4-openssl-dev \
-            libpng-dev \
-            libjpeg-dev \
-            libfreetype-dev \
-            libonig-dev \
-            libzip-dev \
-            libgmp-dev \
-            libreadline-dev \
-            libsodium-dev \
-            libxslt-dev \
-            libpq-dev
+            build-essential autoconf automake libtool pkg-config cmake \
+            re2c bison curl wget git xz-utils \
+            libxml2-dev libssl-dev libsqlite3-dev zlib1g-dev libbz2-dev \
+            libcurl4-openssl-dev libpng-dev libjpeg-dev libfreetype-dev \
+            libonig-dev libzip-dev libgmp-dev libreadline-dev libsodium-dev \
+            libxslt-dev libpq-dev
 
-      - name: Build PHP ${{ matrix.version }}
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+
+      - name: Build FrankenPHP with PHP ${{ matrix.version }}
         run: |
           chmod +x scripts/build-php.sh
           bash scripts/build-php.sh "${{ matrix.version }}" "${{ matrix.os }}" "${{ matrix.arch }}"
@@ -157,89 +133,23 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: php-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
-          path: output/php-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
+          name: frankenphp-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: output/frankenphp-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 1
 
-  # ──────────────────────────────────────────────────────────────
-  # Job 3: Download development tools
-  # ──────────────────────────────────────────────────────────────
-  tools:
-    name: Download tools
-    needs: check
-    if: needs.check.outputs.has_builds == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Download Composer
-        run: |
-          mkdir -p tools
-          # Get latest stable Composer
-          curl -fsSL https://getcomposer.org/download/latest-stable/composer.phar -o tools/composer.phar
-          chmod +x tools/composer.phar
-          COMPOSER_VERSION=$(php tools/composer.phar --version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' || echo "latest")
-          echo "COMPOSER_VERSION=${COMPOSER_VERSION}" >> "$GITHUB_ENV"
-          echo "Downloaded Composer ${COMPOSER_VERSION}"
-
-      - name: Download Laravel Installer
-        run: |
-          mkdir -p tools
-
-          # Get latest Laravel installer release
-          LARAVEL_VERSION=$(curl -fsSL https://api.github.com/repos/laravel/installer/releases/latest | jq -r '.tag_name' | sed 's/^v//')
-          echo "LARAVEL_VERSION=${LARAVEL_VERSION}" >> "$GITHUB_ENV"
-
-          # Laravel installer is a Composer global package, we build a phar or download the binary
-          # For now, download the release archive and extract
-          curl -fsSL "https://github.com/laravel/installer/archive/refs/tags/v${LARAVEL_VERSION}.tar.gz" -o tools/laravel-installer.tar.gz
-
-          # We'll build platform-specific binaries using box or similar
-          # For the initial setup, provide the source archive
-          echo "Downloaded Laravel Installer ${LARAVEL_VERSION}"
-
-      - name: Download Symfony CLI
-        run: |
-          mkdir -p tools
-
-          # Download Symfony CLI for each platform
-          # x86_64
-          curl -fsSL "https://github.com/symfony-cli/symfony-cli/releases/latest/download/symfony-cli_linux_amd64.tar.gz" \
-            -o tools/symfony-cli-linux-x86_64.tar.gz
-          tar -xzf tools/symfony-cli-linux-x86_64.tar.gz -C tools/
-          mv tools/symfony tools/symfony-linux-x86_64
-          rm -f tools/symfony-cli-linux-x86_64.tar.gz
-
-          # aarch64
-          curl -fsSL "https://github.com/symfony-cli/symfony-cli/releases/latest/download/symfony-cli_linux_arm64.tar.gz" \
-            -o tools/symfony-cli-linux-aarch64.tar.gz
-          tar -xzf tools/symfony-cli-linux-aarch64.tar.gz -C tools/
-          mv tools/symfony tools/symfony-linux-aarch64
-          rm -f tools/symfony-cli-linux-aarch64.tar.gz
-
-          SYMFONY_VERSION=$(./tools/symfony-linux-x86_64 version 2>/dev/null | grep -oP '[0-9]+\.[0-9]+\.[0-9]+' || echo "latest")
-          echo "SYMFONY_VERSION=${SYMFONY_VERSION}" >> "$GITHUB_ENV"
-          echo "Downloaded Symfony CLI ${SYMFONY_VERSION}"
-
-      - name: Upload tool artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: tools
-          path: tools/
-          retention-days: 1
-
-  # ──────────────────────────────────────────────────────────────
-  # Job 4: Publish releases and update manifest
-  # ──────────────────────────────────────────────────────────────
   publish:
     name: Publish releases
-    needs: [check, build, tools]
+    needs: [check, build]
     if: needs.check.outputs.has_builds == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Install dependencies
+        run: |
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
 
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
@@ -251,23 +161,20 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           MATRIX='${{ needs.check.outputs.matrix }}'
-
-          # Get unique versions from the matrix
           VERSIONS=$(echo "$MATRIX" | jq -r '.include[].version' | sort -u)
+          FRANKENPHP_VERSION=$(yq -r '.frankenphp_version' config.yaml)
 
           for version in $VERSIONS; do
             TAG="php-${version}"
-            MINOR="${version%.*}"
-
             echo "=== Publishing PHP ${version} ==="
 
-            # Collect all platform tarballs for this version
             ASSETS=()
-            for artifact_dir in artifacts/php-${version}-*/; do
-              for tarball in "${artifact_dir}"*.tar.gz; do
-                if [[ -f "$tarball" ]]; then
-                  ASSETS+=("$tarball")
-                  echo "  Asset: $(basename "$tarball")"
+            for artifact_dir in artifacts/frankenphp-${version}-*/; do
+              for binary in "${artifact_dir}"frankenphp-*; do
+                if [[ -f "$binary" ]]; then
+                  chmod +x "$binary"
+                  ASSETS+=("$binary")
+                  echo "  Asset: $(basename "$binary")"
                 fi
               done
             done
@@ -277,13 +184,11 @@ jobs:
               continue
             fi
 
-            # Create or update the release
+            NOTES="FrankenPHP ${FRANKENPHP_VERSION} with PHP ${version} (static build, Linux x86_64 + aarch64)"
+
             if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
-              echo "Release ${TAG} exists, uploading assets..."
               gh release upload "$TAG" "${ASSETS[@]}" --repo "$REPO" --clobber
             else
-              echo "Creating release ${TAG}..."
-              NOTES="Static PHP ${version} builds for Linux (x86_64, aarch64). Built with static-php-cli."
               gh release create "$TAG" \
                 "${ASSETS[@]}" \
                 --repo "$REPO" \
@@ -292,42 +197,6 @@ jobs:
                 --latest=false
             fi
           done
-
-      - name: Publish tools release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TOOLS_DIR="artifacts/tools"
-          if [[ ! -d "$TOOLS_DIR" ]]; then
-            echo "No tools artifacts found, skipping"
-            exit 0
-          fi
-
-          TOOL_ASSETS=()
-          for file in "${TOOLS_DIR}"/*; do
-            if [[ -f "$file" && ! "$file" =~ \.tar\.gz$ ]]; then
-              TOOL_ASSETS+=("$file")
-            fi
-          done
-
-          if [[ ${#TOOL_ASSETS[@]} -eq 0 ]]; then
-            echo "No tool assets to publish"
-            exit 0
-          fi
-
-          NOTES="Development tools bundle. Composer: ${COMPOSER_VERSION:-latest}, Laravel: ${LARAVEL_VERSION:-latest}, Symfony CLI: ${SYMFONY_VERSION:-latest}"
-
-          if gh release view "tools" --repo "$REPO" >/dev/null 2>&1; then
-            gh release upload "tools" "${TOOL_ASSETS[@]}" --repo "$REPO" --clobber
-            gh release edit "tools" --repo "$REPO" --notes "$NOTES"
-          else
-            gh release create "tools" \
-              "${TOOL_ASSETS[@]}" \
-              --repo "$REPO" \
-              --title "Development Tools" \
-              --notes "$NOTES" \
-              --latest=false
-          fi
 
       - name: Update manifest
         env:
