@@ -1,4 +1,4 @@
-name: Build FrankenPHP
+name: Build PHP
 
 on:
   schedule:
@@ -95,7 +95,7 @@ jobs:
           fi
 
   build:
-    name: Build FrankenPHP PHP ${{ matrix.version }} (${{ matrix.os }}-${{ matrix.arch }})
+    name: Build PHP ${{ matrix.version }} (${{ matrix.os }}-${{ matrix.arch }})
     needs: check
     if: needs.check.outputs.has_builds == 'true'
     runs-on: ${{ matrix.arch == 'aarch64' && 'ubuntu-24.04-arm' || 'ubuntu-latest' }}
@@ -131,7 +131,7 @@ jobs:
         with:
           go-version: "1.25"
 
-      - name: Build FrankenPHP with PHP ${{ matrix.version }}
+      - name: Build PHP ${{ matrix.version }}
         run: |
           chmod +x scripts/build-php.sh
           bash scripts/build-php.sh "${{ matrix.version }}" "${{ matrix.os }}" "${{ matrix.arch }}"
@@ -139,8 +139,8 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v7
         with:
-          name: frankenphp-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
-          path: output/frankenphp-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
+          name: php-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}
+          path: output/php-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}.tar.gz
           retention-days: 1
 
   publish:
@@ -168,19 +168,17 @@ jobs:
         run: |
           MATRIX='${{ needs.check.outputs.matrix }}'
           VERSIONS=$(echo "$MATRIX" | jq -r '.include[].version' | sort -u)
-          FRANKENPHP_VERSION=$(yq -r '.frankenphp_version' config.yaml)
 
           for version in $VERSIONS; do
             TAG="php-${version}"
             echo "=== Publishing PHP ${version} ==="
 
             ASSETS=()
-            for artifact_dir in artifacts/frankenphp-${version}-*/; do
-              for binary in "${artifact_dir}"frankenphp-*; do
-                if [[ -f "$binary" ]]; then
-                  chmod +x "$binary"
-                  ASSETS+=("$binary")
-                  echo "  Asset: $(basename "$binary")"
+            for artifact_dir in artifacts/php-${version}-*/; do
+              for tarball in "${artifact_dir}"php-*.tar.gz; do
+                if [[ -f "$tarball" ]]; then
+                  ASSETS+=("$tarball")
+                  echo "  Asset: $(basename "$tarball")"
                 fi
               done
             done
@@ -190,7 +188,7 @@ jobs:
               continue
             fi
 
-            NOTES="FrankenPHP ${FRANKENPHP_VERSION} with PHP ${version} (static build, Linux x86_64 + aarch64)"
+            NOTES="PHP ${version} — static CLI + FrankenPHP (Linux x86_64 + aarch64)"
 
             if gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1; then
               gh release upload "$TAG" "${ASSETS[@]}" --repo "$REPO" --clobber

@@ -14,8 +14,6 @@ CONFIG_FILE="${SCRIPT_DIR}/../config.yaml"
 REPO="${GITHUB_REPOSITORY:-phpdevkit/php-builds}"
 MANIFEST_FILE="${SCRIPT_DIR}/../manifest.json"
 
-FRANKENPHP_VERSION=$(yq -r '.frankenphp_version' "$CONFIG_FILE")
-
 echo "=== Regenerating manifest.json ==="
 
 releases=$(gh release list --repo "$REPO" --limit 200 --json tagName,publishedAt 2>/dev/null || echo "[]")
@@ -41,7 +39,8 @@ while IFS= read -r tag; do
     while IFS= read -r asset_name; do
         [[ -z "$asset_name" ]] && continue
 
-        if [[ "$asset_name" =~ ^frankenphp-${version}-([a-z]+)-([a-z0-9_]+)$ ]]; then
+        # Match pattern: php-{version}-{os}-{arch}.tar.gz
+        if [[ "$asset_name" =~ ^php-${version}-([a-z]+)-([a-z0-9_]+)\.tar\.gz$ ]]; then
             os="${BASH_REMATCH[1]}"
             arch="${BASH_REMATCH[2]}"
             platform="${os}-${arch}"
@@ -58,14 +57,13 @@ while IFS= read -r tag; do
     version_entry=$(jq -n \
         --arg version "$version" \
         --arg minor "$minor" \
-        --arg fpv "$FRANKENPHP_VERSION" \
         --arg date "$date" \
         --argjson assets "$assets_map" \
-        '{version: $version, minor: $minor, frankenphp_version: $fpv, date: $date, assets: $assets}')
+        '{version: $version, minor: $minor, date: $date, assets: $assets}')
 
     versions_json=$(echo "$versions_json" | jq --argjson entry "$version_entry" '. + [$entry]')
 
-    echo "Found: PHP ${version} (FrankenPHP ${FRANKENPHP_VERSION}, ${date})"
+    echo "Found: PHP ${version} (${date})"
 done < <(echo "$releases" | jq -r '.[].tagName')
 
 versions_json=$(echo "$versions_json" | jq 'sort_by(.version) | reverse')
