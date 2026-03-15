@@ -77,6 +77,13 @@ else
     SPC="php bin/spc"
 fi
 
+# Set up build environment (installs pkg-config, etc.)
+echo "=== Setting up build environment ==="
+$SPC doctor --auto-fix
+
+# Install xcaddy (needed for FrankenPHP build)
+$SPC install-pkg go-xcaddy
+
 # Extensions to build
 EXTENSIONS=$(yq -r '.extensions // "all"' "$CONFIG_FILE")
 if [[ "$EXTENSIONS" == "all" ]]; then
