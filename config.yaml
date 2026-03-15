@@ -1,0 +1,18 @@
+versions:
+  - "8.2"
+  - "8.3"
+  - "8.4"
+  - "8.5"
+
+platforms:
+  - os: linux
+    arch: x86_64
+  - os: linux
+    arch: aarch64
+
+extensions: "all"
+
+tools:
+  composer: true
+  laravel-installer: true
+  symfony-cli: true
