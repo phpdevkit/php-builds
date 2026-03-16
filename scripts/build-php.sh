@@ -29,8 +29,13 @@ OUTPUT_NAME="php-${PHP_VERSION}-${OS}-${ARCH}"
 echo "=== Detecting latest FrankenPHP release ==="
 FRANKENPHP_VERSION=$(gh release view --repo dunglas/frankenphp --json tagName --jq '.tagName' 2>/dev/null || echo "")
 if [[ -z "$FRANKENPHP_VERSION" ]]; then
-    # Fallback: query the API directly
-    FRANKENPHP_VERSION=$(curl -fsSL "https://api.github.com/repos/dunglas/frankenphp/releases/latest" | jq -r '.tag_name')
+    # Fallback: query the API directly (use GH_TOKEN/GITHUB_TOKEN if available to avoid rate limits)
+    CURL_ARGS=(-fsSL)
+    TOKEN="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+    if [[ -n "$TOKEN" ]]; then
+        CURL_ARGS+=(-H "Authorization: token ${TOKEN}")
+    fi
+    FRANKENPHP_VERSION=$(curl "${CURL_ARGS[@]}" "https://api.github.com/repos/dunglas/frankenphp/releases/latest" | jq -r '.tag_name')
 fi
 echo "Using FrankenPHP ${FRANKENPHP_VERSION}"
 
