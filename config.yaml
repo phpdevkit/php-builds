@@ -11,3 +11,7 @@ platforms:
     arch: x86_64
   - os: linux
     arch: aarch64
+  - os: darwin
+    arch: x86_64
+  - os: darwin
+    arch: aarch64
