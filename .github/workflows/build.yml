@@ -148,6 +148,7 @@ jobs:
       - name: Build PHP ${{ matrix.version }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           chmod +x scripts/build-php.sh
           bash scripts/build-php.sh "${{ matrix.version }}" "${{ matrix.os }}" "${{ matrix.arch }}"
